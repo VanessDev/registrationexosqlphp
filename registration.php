@@ -1,20 +1,46 @@
 <?php
-$name = $email = $password = "";
-$erreur = "";
+// Initialisation des variables
+$name = $email = $password = $confirmPassword = "";
+$errors = []; // Tableau pour stocker les erreurs
 
-// Vérifie si le formulaire est soumis
+// Vérifie si le formulaire a été soumis
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $name = htmlspecialchars(trim($_POST['name']));
-    $email = htmlspecialchars(trim($_POST['email']));
-    $password = htmlspecialchars(trim($_POST['password']));
+    // Récupère les données du formulaire
+    $name = htmlspecialchars(trim($_POST['name'] ?? ''));
+    $email = htmlspecialchars(trim($_POST['email'] ?? ''));
+    $password = trim($_POST['password'] ?? '');
+    $confirmPassword = trim($_POST['confirm_motdepasse'] ?? '');
 
-    // Vérifications
+    // Vérifie que tous les champs sont remplis
+    if (empty($name) || empty($email) || empty($password) || empty($confirmPassword)) {
+        $errors[] = "Tous les champs sont obligatoires.";
+    }
+
+    // Vérifie que l'email est valide
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $erreur = "Adresse email invalide.";
-    } elseif (empty($name) || empty($email) || empty($password)) {
-        $erreur = "Tous les champs sont obligatoires.";
-    } else {
-        echo "Merci $name, votre email a été reçu.";
+        $errors[] = "Adresse email invalide.";
+    }
+
+    // Vérifie la longueur du nom
+    if (strlen($name) < 3) {
+        $errors[] = "Le nom doit contenir au moins 3 caractères.";
+    } elseif (strlen($name) > 55) {
+        $errors[] = "Le nom ne doit pas dépasser 55 caractères.";
+    }
+
+    // Vérifie la longueur du mot de passe
+    if (strlen($password) < 8) {
+        $errors[] = "Le mot de passe doit contenir au moins 8 caractères.";
+    }
+
+    // Vérifie que les mots de passe correspondent
+    if ($password !== $confirmPassword) {
+        $errors[] = "Les mots de passe doivent être identiques.";
+    }
+
+    // Si aucune erreur, afficher un message de confirmation
+    if (empty($errors)) {
+        echo "<p style='color: green;'>Merci $name, votre inscription est réussie.</p>";
         exit;
     }
 }
@@ -22,32 +48,44 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
 <!DOCTYPE html>
 <html lang="fr">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Formulaire exo Mysql php</title>
+    <link rel="stylesheet" href="style.css">
+    <title>Formulaire d'inscription</title>
 </head>
-
 <body>
-    <section>
-        <?php if (!empty($erreur)) : ?>
-            <p style="color: red;"><?= $erreur ?></p>
-        <?php endif; ?>
+    <h2>Formulaire d'inscription</h2>
 
-        <form action="" method="POST">
-            <label for="name">Nom :</label>
-            <input type="text" id="name" name="name" required>
+    <!-- Affichage des erreurs -->
+    <?php if (!empty($errors)): ?>
+        <ul style="color: red;">
+            <?php foreach ($errors as $error): ?>
+                <li><?= $error ?></li>
+            <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
 
-            <label for="email">Email :</label>
-            <input type="email" id="email" name="email" required>
+    <!-- Formulaire -->
+    <form action="" method="post">
+        <label for="name">Nom :</label><br>
+        <input type="text" id="name" name="name" required value="<?= htmlspecialchars($name) ?>"><br><br>
 
-            <label for="password">Mot de passe :</label>
-            <input type="password" id="password" name="password" required>
+        <label for="email">Email :</label><br>
+        <input type="email" id="email" name="email" required value="<?= htmlspecialchars($email) ?>"><br><br>
 
-            <button type="submit">Envoyer</button>
-        </form>
-    </section>
+        <label for="password">Mot de passe :</label><br>
+        <input 
+            type="password" 
+            id="password" 
+            name="password" 
+            required
+            pattern="^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$"
+            title="Au moins 8 caractères, dont une majuscule, une minuscule, un chiffre et un caractère spécial."><br><br>
+
+        <label for="confirm_motdepasse">Confirmer le mot de passe :</label><br>
+        <input type="password" id="confirm_motdepasse" name="confirm_motdepasse" required><br><br>
+
+        <input type="submit" value="Envoyer">
+    </form>
 </body>
-
 </html>
