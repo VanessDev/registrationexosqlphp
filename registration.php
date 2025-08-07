@@ -2,6 +2,7 @@
 require_once 'config/database.php';
 
 $errors = [];
+$message = "";
 // =========================================
 // condition qui contient la logique de traitement du formulaire quand on recoit une request POST
 // ==========================================
@@ -40,26 +41,37 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     } elseif ($password !== $confirmPassword) {
         $errors[] = "mot de passe doivent etre identique";
     }
-        if (empty($errors)) {
-            //logique de traitement en db
-            $pdo = dbConnexion();
 
-            //verifier si l'adresse mail est utilisé ou non
-            $checkEmail = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+    if (empty($errors)) {
+        //logique de traitement en db
+        $pdo = dbConnexion();
 
-            //la methode execute de mon objet pdo execute la request préparée
-            $checkEmail->execute([$email]);
+        //verifier si l'adresse mail est utilisé ou non
+        $checkEmail = $pdo->prepare("SELECT id FROM users WHERE email = ?");
 
-            //une condition pour vérifier si je recupere quelque chose
-            if ($checkEmail->rowCount() > 0) {
-                $errors[] = "email déja utilisé";
-            } else {
-                //dans le cas ou tout va bien ! email pas utilisé
+        //la methode execute de mon objet pdo execute la request préparée
+        $checkEmail->execute([$email]);
 
-                //hashage du mdp
-                $hashPassword = password_hash($password, PASSWORD_DEFAULT);
+        //une condition pour vérifier si je recupere quelque chose
+        if ($checkEmail->rowCount() > 0) {
+            $errors[] = "email déja utilisé";
+        } else {
+            //dans le cas ou tout va bien ! email pas utilisé
 
-                var_dump($hashPassword);
+            //hashage du mdp avec la fonction password_hash
+            $hashPassword = password_hash($password, PASSWORD_DEFAULT);
+
+            //insertion des données en db
+            // INSERT INTO users (username, email, password)VALUES ("atif","atif@gmail.com","lijezfoifjerlkjf")
+            $insertUser = $pdo->prepare("
+                INSERT INTO users (username, email, password) 
+                VALUES (?, ?, ?)
+                ");
+
+            $insertUser->execute([$username, $email, $hashPassword]);
+
+            $message = "super mega cool vous êtes enregistré $username";
+        }
         // try {
 
         // } catch () {
@@ -87,6 +99,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             <?php
             foreach ($errors as $error) {
                 echo $error;
+            }
+            if (!empty($message)) {
+                echo $message;
             }
             ?>
             <div>
