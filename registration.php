@@ -40,16 +40,26 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     } elseif ($password !== $confirmPassword) {
         $errors[] = "mot de passe doivent etre identique";
     }
+        if (empty($errors)) {
+            //logique de traitement en db
+            $pdo = dbConnexion();
 
-    if (empty($errors)) {
-        //logique de traitement en db
-        $pdo = dbConnexion();
+            //verifier si l'adresse mail est utilisé ou non
+            $checkEmail = $pdo->prepare("SELECT id FROM users WHERE email = ?");
 
-        //verifier si l'adresse mail est utilisé ou non
-        $checkEmail = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+            //la methode execute de mon objet pdo execute la request préparée
+            $checkEmail->execute([$email]);
 
-        $checkEmail->execute([$email]);
-        var_dump('hello');
+            //une condition pour vérifier si je recupere quelque chose
+            if ($checkEmail->rowCount() > 0) {
+                $errors[] = "email déja utilisé";
+            } else {
+                //dans le cas ou tout va bien ! email pas utilisé
+
+                //hashage du mdp
+                $hashPassword = password_hash($password, PASSWORD_DEFAULT);
+
+                var_dump($hashPassword);
         // try {
 
         // } catch () {
