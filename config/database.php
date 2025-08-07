@@ -9,7 +9,7 @@ function dbConnexion()
     //l'endroit ou est ma database
     $host = "localhost";
     //le nom de la db
-    $dbname = "users_db";
+    $dbname = "vernisaongles";
     //identifiant de connexion
     $username = "root";
     //mdp de connexion

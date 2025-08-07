@@ -64,13 +64,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             //insertion des données en db
             // INSERT INTO users (username, email, password)VALUES ("atif","atif@gmail.com","lijezfoifjerlkjf")
             $insertUser = $pdo->prepare("
-                INSERT INTO users (username, email, password) 
+                INSERT INTO users (nom, prenom, email, password) 
                 VALUES (?, ?, ?)
                 ");
 
-            $insertUser->execute([$username, $email, $hashPassword]);
+            $insertUser->execute([$nom, $prenom, $email, $hashPassword]);
 
-            $message = "super mega cool vous êtes enregistré $username";
+            $message = "super mega cool vous êtes enregistré $nom";
         }
         // try {
 
