@@ -1,9 +1,16 @@
 <?php
+// 📦 Importe une seule fois le fichier de connexion à la base de données (évite les doublons)
 require_once 'config/database.php';
+
+// 🚪 Démarre la session PHP pour pouvoir stocker des infos (comme l'utilisateur connecté)
 session_start();
 
+// 🗂 Initialise un tableau vide pour stocker les messages d'erreurs éventuels
 $errors = [];
+
+// ✅ Initialise une variable vide pour stocker un éventuel message de succès ou d'information
 $message = "";
+
 
 // Si le formulaire est soumis
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
@@ -12,15 +19,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $password = $_POST["password"] ?? '';
 
     // Validation
-    if (empty($email)) {
-        $errors[] = "Email obligatoire.";
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $errors[] = "Format d'email invalide.";
-    }
+ -// ✅ Vérifie si le champ email est vide
+if (empty($email)) {
+    // Si oui, on ajoute un message d'erreur dans le tableau $errors[]
+    $errors[] = "Email obligatoire.";
+}
 
-    if (empty($password)) {
-        $errors[] = "Mot de passe obligatoire.";
-    }
+// ✅ Sinon, vérifie si l'email n'est pas au bon format (exemple : pas de @, ou mauvaise syntaxe)
+elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    // Si le format est invalide, on ajoute aussi une erreur
+    $errors[] = "Format d'email invalide.";
+}
+
+// ✅ Vérifie si le champ mot de passe est vide
+if (empty($password)) {
+    // Si le mot de passe est vide, on ajoute une erreur
+    $errors[] = "Mot de passe obligatoire.";
+}
+
 
     // Si tout est ok
     if (empty($errors)) {
@@ -37,14 +53,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         var_dump($password);   // 👈 Affiche le mot de passe envoyé
         exit;                  // 👈 Stoppe le code ici pour tester
 
-        if ($user && password_verify($password, $user["password"])) {
-            // Connexion réussie
-            $_SESSION['user'] = $user;
-            header("Location: index.php");
-            exit();
-        } else {
-            $errors[] = "Email ou mot de passe incorrect.";
-        }
+// Vérifie si l'utilisateur existe et si le mot de passe entré correspond au mot de passe hashé dans la base
+if ($user && password_verify($password, $user["password"])) {
+
+    // ✅ Connexion réussie : on stocke les infos de l'utilisateur dans la session
+    $_SESSION['user'] = $user;
+
+    // 🔁 Redirige l'utilisateur vers la page d'accueil (protégée)
+    header("Location: index.php");
+
+    // ⛔ Stoppe le script (important après une redirection)
+    exit();
+
+} else {
+    // ❌ Si l'email n'existe pas OU que le mot de passe est incorrect
+    // On ajoute un message d'erreur dans le tableau $errors[]
+    $errors[] = "Email ou mot de passe incorrect.";
+}
+
     }
 }
 ?>
