@@ -22,8 +22,6 @@ input {
   background-color: aqua;
 }
 
-
-
 /* login.php */
 
 .mon-formulaire {
@@ -62,4 +60,17 @@ input {
 
 .mon-formulaire button:hover {
   background-color: #2980b9;
+}
+
+nav > ul {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 10px;
+}
+a {
+  text-decoration: none;
+}
+li {
+  list-style-type: none;
 }

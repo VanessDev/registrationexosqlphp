@@ -1,112 +1,116 @@
 <?php
-// 📦 Importe une seule fois le fichier de connexion à la base de données (évite les doublons)
 require_once 'config/database.php';
-
-// 🚪 Démarre la session PHP pour pouvoir stocker des infos (comme l'utilisateur connecté)
 session_start();
 
-// 🗂 Initialise un tableau vide pour stocker les messages d'erreurs éventuels
 $errors = [];
-
-// ✅ Initialise une variable vide pour stocker un éventuel message de succès ou d'information
 $message = "";
 
+// Valeurs par défaut pour éviter les notices
+$email = "";
+$password = "";
 
-// Si le formulaire est soumis
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    // Récupération et nettoyage des données
-    $email = trim(htmlspecialchars($_POST["email"] ?? ''));
+    // 1) Récupération + normalisation
+    $email = strtolower(trim($_POST["email"] ?? ''));
     $password = $_POST["password"] ?? '';
 
-    // Validation
-    // ✅ Vérifie si le champ email est vide
-    if (empty($email)) {
-        // Si oui, on ajoute un message d'erreur dans le tableau $errors[]
+    // 2) Validation
+    if ($email === '') {
         $errors[] = "Email obligatoire.";
-    }
-
-    // ✅ Sinon, vérifie si l'email n'est pas au bon format (exemple : pas de @, ou mauvaise syntaxe)
-    elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        // Si le format est invalide, on ajoute aussi une erreur
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errors[] = "Format d'email invalide.";
     }
-
-    // ✅ Vérifie si le champ mot de passe est vide
-    if (empty($password)) {
-        // Si le mot de passe est vide, on ajoute une erreur
+    if ($password === '') {
         $errors[] = "Mot de passe obligatoire.";
     }
 
-
-    // Si tout est ok
+    // 3) DB si pas d'erreurs
     if (empty($errors)) {
-        $pdo = dbConnexion();
+        try {
+            $pdo = dbConnexion();
 
-        // Recherche de l'utilisateur
-// 🔧 Prépare une requête SQL pour sélectionner un utilisateur selon son email (évite les injections SQL)
-        $stmt = $pdo->prepare("SELECT * FROM utilisateurs WHERE email = ?");
+            // Recherche insensible à la casse
+            $stmt = $pdo->prepare("
+                SELECT id, nom, prenom, email, password
+                FROM utilisateurs
+                WHERE LOWER(email) = ?
+                LIMIT 1
+            ");
+            $stmt->execute([$email]);
+            $user = $stmt->fetch();
 
-        // ▶️ Exécute la requête en remplaçant le point d'interrogation "?" par la valeur réelle de $email
-        $stmt->execute([$email]);
+            $isValid = false;
 
-        // 📥 Récupère le premier résultat trouvé (ou false si aucun utilisateur avec cet email)
-// Le résultat est un tableau associatif contenant les colonnes de la table (email, password, etc.)
-        $user = $stmt->fetch();
+            if ($user) {
+                $dbPass = (string) ($user['password'] ?? '');
 
+                // Si le mdp en BDD est un hash connu -> password_verify
+                if (password_get_info($dbPass)['algo'] !== 0) {
+                    $isValid = password_verify($password, $dbPass);
+                } else {
+                    // Sinon: mot de passe stocké en clair (temporaire pour compat)
+                    $isValid = hash_equals(trim($dbPass), trim($password));
+                }
 
-        // DEBUG temporaire
-        var_dump($user);       // 👈 Affiche le résultat de la requête
-        var_dump($email);      // 👈 Affiche l'email envoyé
-        var_dump($password);   // 👈 Affiche le mot de passe envoyé
-        exit;                  // 👈 Stoppe le code ici pour tester
+                if ($isValid) {
+                    // Upgrade auto en hash si c'était en clair
+                    if (password_get_info($dbPass)['algo'] === 0) {
+                        $newHash = password_hash($password, PASSWORD_DEFAULT);
+                        $up = $pdo->prepare("UPDATE utilisateurs SET password = ? WHERE id = ?");
+                        $up->execute([$newHash, $user['id']]);
+                    }
 
-        // Vérifie si l'utilisateur existe et si le mot de passe entré correspond au mot de passe hashé dans la base
-        if ($user && password_verify($password, $user["password"])) {
+                    // Session minimale
+                    $_SESSION['user'] = [
+                        'id' => $user['id'],
+                        'nom' => $user['nom'],
+                        'prenom' => $user['prenom'],
+                        'email' => $user['email'],
+                    ];
 
-            // ✅ Connexion réussie : on stocke les infos de l'utilisateur dans la session
-            $_SESSION['user'] = $user;
+                    header("Location: index.php");
+                    exit;
+                }
+            }
 
-            // 🔁 Redirige l'utilisateur vers la page d'accueil (protégée)
-            header("Location: index.php");
-
-            // ⛔ Stoppe le script (important après une redirection)
-            exit();
-
-        } else {
-            // ❌ Si l'email n'existe pas OU que le mot de passe est incorrect
-            // On ajoute un message d'erreur dans le tableau $errors[]
+            // Si on arrive ici: login invalide
             $errors[] = "Email ou mot de passe incorrect.";
-        }
 
+        } catch (PDOException $e) {
+            // Message neutre (sécurité). Décommente pour debug local.
+            $errors[] = "Une erreur interne est survenue. Veuillez réessayer.";
+            // $errors[] = $e->getMessage();
+        }
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="fr">
 
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>Connexion</title>
-    <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="assets/style.css" />
 </head>
 
 <body>
     <main>
         <form action="" method="POST" class="mon-formulaire">
-            <?php
-            // ✅ Vérifie si le champ email est vide
-            if (empty($email)) {
-                // Si oui, on ajoute un message d'erreur dans le tableau $errors[]
-                $errors[] = "Email obligatoire.";
-            }
+            <?php if (!empty($errors)): ?>
+                <?php foreach ($errors as $error): ?>
+                    <p style="color:red;"><?= htmlspecialchars($error) ?></p>
+                <?php endforeach; ?>
+            <?php endif; ?>
 
-            ?>
+            <?php if (!empty($message)): ?>
+                <p style="color:green;"><?= htmlspecialchars($message) ?></p>
+            <?php endif; ?>
+
             <label for="email">Email</label>
-            <input type="email" name="email" id="email" required>
+            <input type="email" name="email" id="email" required value="<?= htmlspecialchars($email) ?>" />
 
             <label for="password">Mot de passe</label>
-            <input type="password" name="password" id="password" required>
+            <input type="password" name="password" id="password" required />
 
             <button type="submit">Se connecter</button>
         </form>
